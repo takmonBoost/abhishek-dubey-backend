@@ -2,7 +2,7 @@
 # Created by https://www.gitignore.io/api/vim,macos,elixir,phoenix
 
 ### Elixir ###
-
+/_build
 /cover
 /deps
 /doc
