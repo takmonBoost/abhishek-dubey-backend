@@ -23,9 +23,11 @@ const prod_URL = "https://api.phonepe.com/apis/hermes/pg/v1/pay";
 const prod_STATUS_URL = "https://api.phonepe.com/apis/hermes/pg/v1/status";
 
 // Redirect URLs for payment results
-const redirectUrl = "https://astrologerabhishekdubey.in/status";
-const successUrl = "https://astrologerabhishekdubey.in/payment-success";
-const failureUrl = "https://astrologerabhishekdubey.in/payment-failure";
+const redirectUrl="http://localhost:8000/status"
+
+const successUrl="http://localhost:5173/payment-success"
+const failureUrl="http://localhost:5173/payment-failure"
+
 
 app.post('/create-order', async (req, res) => {
   const { name, mobileNumber, amount } = req.body;
