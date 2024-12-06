@@ -7,13 +7,11 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 
 app.use(express.json());
-// Allow only your frontend domain to access the backend
 app.use(cors({
-  origin: 'https://astrologerabhishekdubey.in', // Frontend domain
-  methods: ['GET', 'POST'],
-  credentials: true,
+  origin: 'http://localhost:5173', // Allow only the frontend domain
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
+  credentials: true, // Allow cookies and credentials
 }));
-
 // Replace with your actual Merchant Key and ID
 const MERCHANT_KEY = "f3524224-f4f7-4b2a-abb6-d94c840ed848";
 const MERCHANT_ID = "M22IFFVYCBPTF";
@@ -33,6 +31,9 @@ app.post('/create-order', async (req, res) => {
   const { name, mobileNumber, amount } = req.body;
   const orderId = uuidv4();
 
+
+  console.log("Incoming Request:", req.body);
+
   // Payment payload for PhonePe
   const paymentPayload = {
     merchantId: MERCHANT_ID,
@@ -47,6 +48,7 @@ app.post('/create-order', async (req, res) => {
     }
   };
 
+  console.log("Constructed Payload:", paymentPayload);
   // Create checksum
   const payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
   const keyIndex = 1;
@@ -70,6 +72,7 @@ app.post('/create-order', async (req, res) => {
 
   try {
     const response = await axios.request(option);
+    console.log("PhonePe Response:", response.data);
     console.log(response.data.data.instrumentResponse.redirectInfo.url);
     res.status(200).json({ msg: "OK", url: response.data.data.instrumentResponse.redirectInfo.url });
   } catch (error) {
