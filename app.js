@@ -26,10 +26,25 @@ const prod_URL = process.env.PROD_URL;
 const prod_STATUS_URL = process.env.PROD_STATUS_URL;
 
 app.post('/create-order', async (req, res) => {
-  const { name, mobileNumber, amount } = req.body;
+  const {
+    name,
+    mobileNumber,
+    email,
+    dob,
+    placeOfBirth,
+    timeOfBirth,
+    gender,
+    language,
+    age,
+    whatsapp,
+    questions,
+    amount
+  } = req.body;
+
   const orderId = uuidv4();
 
-  console.log("Incoming Request:", req.body);
+  // Log received data for verification
+  console.log("Incoming Data:", req.body);
 
   // Payment payload for PhonePe
   const paymentPayload = {
@@ -45,16 +60,11 @@ app.post('/create-order', async (req, res) => {
     }
   };
 
-  console.log("Constructed Payload:", paymentPayload);
-
-  // Create checksum
   const payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
-  const keyIndex = 1;
   const string = payload + '/pg/v1/pay' + MERCHANT_KEY;
   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-  const checksum = sha256 + '###' + keyIndex;
+  const checksum = sha256 + '###' + 1;
 
-  // API options
   const option = {
     method: 'POST',
     url: prod_URL,
@@ -63,21 +73,29 @@ app.post('/create-order', async (req, res) => {
       'Content-Type': 'application/json',
       'X-VERIFY': checksum,
     },
-    data: {
-      request: payload
-    }
+    data: { request: payload }
   };
 
   try {
     const response = await axios.request(option);
+
+    // Optional: Save form data and transaction details to database
     console.log("PhonePe Response:", response.data);
-    console.log(response.data.data.instrumentResponse.redirectInfo.url);
-    res.status(200).json({ msg: "OK", url: response.data.data.instrumentResponse.redirectInfo.url });
+
+    if (response.data.data.instrumentResponse.redirectInfo.url) {
+      res.status(200).json({
+        msg: "OK",
+        url: response.data.data.instrumentResponse.redirectInfo.url,
+      });
+    } else {
+      res.status(500).json({ error: "Failed to initiate payment" });
+    }
   } catch (error) {
-    console.log("Error in payment", error);
-    res.status(500).json({ error: 'Failed to initiate payment' });
+    console.error("Error in payment:", error);
+    res.status(500).json({ error: "Payment initiation failed" });
   }
 });
+
 
 app.post('/status', async (req, res) => {
   const merchantTransactionId = req.query.id;
