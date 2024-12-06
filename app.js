@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 
 app.use(cors({
-  origin: "https://astrologerabhishekdubey.in/", // No trailing slash
+  origin: "*", // No trailing slash
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowing the necessary methods
   // Allowing necessary headers
   credentials: true, // Allow cookies and credentials (if needed)
