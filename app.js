@@ -32,7 +32,7 @@ app.post('/create-order', async (req, res) => {
   const orderId = uuidv4();
 
 
-  console.log("Incoming Request:", req.body);
+  console.log("Incoming Request:", req.body );
 
   // Payment payload for PhonePe
   const paymentPayload = {
