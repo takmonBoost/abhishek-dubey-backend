@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
@@ -12,27 +13,21 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
   credentials: true, // Allow cookies and credentials
 }));
-// Replace with your actual Merchant Key and ID
-const MERCHANT_KEY = "f3524224-f4f7-4b2a-abb6-d94c840ed848";
-const MERCHANT_ID = "M22IFFVYCBPTF";
 
-// PhonePe production URLs
-const prod_URL = "https://api.phonepe.com/apis/hermes/pg/v1/pay";
-const prod_STATUS_URL = "https://api.phonepe.com/apis/hermes/pg/v1/status";
-
-// Redirect URLs for payment results
-const redirectUrl="http://localhost:8000/status"
-
-const successUrl="http://localhost:5173/payment-success"
-const failureUrl="http://localhost:5173/payment-failure"
-
+// Environment variables from .env file
+const MERCHANT_KEY = process.env.MERCHANT_KEY;
+const MERCHANT_ID = process.env.MERCHANT_ID;
+const redirectUrl = process.env.REDIRECT_URL;
+const successUrl = process.env.SUCCESS_URL;
+const failureUrl = process.env.FAILURE_URL;
+const prod_URL = process.env.PROD_URL;
+const prod_STATUS_URL = process.env.PROD_STATUS_URL;
 
 app.post('/create-order', async (req, res) => {
   const { name, mobileNumber, amount } = req.body;
   const orderId = uuidv4();
 
-
-  console.log("Incoming Request:", req.body );
+  console.log("Incoming Request:", req.body);
 
   // Payment payload for PhonePe
   const paymentPayload = {
@@ -49,6 +44,7 @@ app.post('/create-order', async (req, res) => {
   };
 
   console.log("Constructed Payload:", paymentPayload);
+
   // Create checksum
   const payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
   const keyIndex = 1;
@@ -119,6 +115,6 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Payment API!');
 });
 
-app.listen(8000, () => {
-  console.log('Server is running on port 8000');
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running on port ${process.env.PORT}`);
 });
