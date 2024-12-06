@@ -9,7 +9,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:5173', // Allow only the frontend domain
+  origin: 'https://astrologerabhishekdubey.in/', // Allow only the frontend domain
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
   credentials: true, // Allow cookies and credentials
 }));
