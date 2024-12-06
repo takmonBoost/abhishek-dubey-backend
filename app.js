@@ -8,10 +8,12 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 
 app.use(express.json());
+
 app.use(cors({
-  origin: 'https://astrologerabhishekdubey.in/', // Allow only the frontend domain
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
-  credentials: true, // Allow cookies and credentials
+  origin: "https://astrologerabhishekdubey.in/", // No trailing slash
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowing the necessary methods
+  // Allowing necessary headers
+  credentials: true, // Allow cookies and credentials (if needed)
 }));
 
 // Environment variables from .env file
