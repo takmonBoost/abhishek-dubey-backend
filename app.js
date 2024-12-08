@@ -74,7 +74,7 @@ app.post('/create-order', async (req, res) => {
     mobileNumber: phone,
     amount: amount * 100,
     merchantTransactionId: orderId,
-    redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
+    redirectUrl: `${REDIRECT_URL}?id=${orderId}`,
     paymentInstrument: { type: 'PAY_PAGE' },
     userDetails: {
       dob,
@@ -111,7 +111,6 @@ app.post('/create-order', async (req, res) => {
     res.status(500).json({ error: 'Payment initiation failed.' });
   }
 });
-
 
 // Payment Status Endpoint
 app.post('/status', async (req, res) => {
@@ -181,13 +180,13 @@ app.post('/status', async (req, res) => {
         html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`,
       });
 
-      res.redirect(SUCCESS_URL);
+      res.redirect(SUCCESS_URL);  // Redirect to success page after successful payment
     } else {
-      res.redirect(FAILURE_URL);
+      res.redirect(FAILURE_URL);  // Redirect to failure page if payment not successful
     }
   } catch (error) {
     console.error("Status error:", error);
-    res.redirect(FAILURE_URL);
+    res.redirect(FAILURE_URL);  // Redirect to failure page on error
   }
 });
 
