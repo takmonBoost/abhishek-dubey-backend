@@ -36,8 +36,6 @@ const {
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
   host:MAIL_HOST,
-  port: 587,
-  service: 'Gmail',
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
@@ -116,7 +114,7 @@ app.post('/create-order', async (req, res) => {
 });
 
 // Payment Status Endpoint
-app.post('/status', async (req, res) => {
+ app.post('/status', async (req, res) => {
   const merchantTransactionId = req.query.id;
   const {
     name,
@@ -133,17 +131,6 @@ app.post('/status', async (req, res) => {
     amount
   } = req.body;
 
-  console.log("incoming merchant request: " +  name + phone,
-    email,
-    dob,
-    placeOfBirth,
-    timeOfBirth,
-    gender,
-    language,
-    age,
-    whatsapp,
-    questions,
-    amount );
 
   const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
@@ -162,8 +149,10 @@ app.post('/status', async (req, res) => {
 
   try {
     const response = await axios.request(options);
+    console.log("API Response:", response.data);
 
     if (response.data.success) {
+      console.log("Payment Successful:", response.data);
       const userDetails = `
         <p><strong>Name:</strong> ${name}</p>
         <p><strong>Phone:</strong> ${phone}</p>
