@@ -26,6 +26,7 @@ const {
   FAILURE_URL,
   PROD_URL,
   PROD_STATUS_URL,
+  MAIL_HOST,
   EMAIL_USER,
   EMAIL_PASS,
   OWNER_EMAIL,
@@ -34,6 +35,8 @@ const {
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
+  host:MAIL_HOST,
+  port: 587,
   service: 'Gmail',
   auth: {
     user: EMAIL_USER,
@@ -129,6 +132,18 @@ app.post('/status', async (req, res) => {
     questions,
     amount
   } = req.body;
+
+  console.log("incoming merchant request: " +  name + phone,
+    email,
+    dob,
+    placeOfBirth,
+    timeOfBirth,
+    gender,
+    language,
+    age,
+    whatsapp,
+    questions,
+    amount );
 
   const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
