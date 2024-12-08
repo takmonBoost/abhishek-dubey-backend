@@ -1,162 +1,23 @@
-
-
-
-// require('dotenv').config();
-// const express = require('express');
-// const axios = require('axios');
-// const crypto = require('crypto');
-// const cors = require("cors");
-// const nodemailer = require('nodemailer');
-// const { v4: uuidv4 } = require('uuid');
-
-// const app = express();
-
-// // Middleware
-// app.use(express.json());
-// app.use(cors({
-//   origin: "*",
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   credentials: true,
-// }));
-
-// // Environment variables
-// const {
-//   MERCHANT_KEY,
-//   MERCHANT_ID,
-//   REDIRECT_URL,
-//   SUCCESS_URL,
-//   FAILURE_URL,
-//   PROD_URL,
-//   PROD_STATUS_URL,
-//   EMAIL_USER,
-//   EMAIL_PASS,
-//   PORT
-// } = process.env;
-
-// // Email transporter configuration
-// const transporter = nodemailer.createTransport({
-//   service: 'Gmail',
-//   auth: {
-//     user: EMAIL_USER,
-//     pass: EMAIL_PASS,
-//   },
-// });
-
-// // Create Order Endpoint
-// app.post('/create-order', async (req, res) => {
-//   const { name, mobileNumber, email, amount } = req.body;
-
-//   const orderId = uuidv4();
-//   const paymentPayload = {
-//     merchantId: MERCHANT_ID,
-//     merchantUserId: name,
-//     mobileNumber,
-//     amount: amount * 100,
-//     merchantTransactionId: orderId,
-//     redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
-//     redirectMode: 'POST',
-//     paymentInstrument: { type: 'PAY_PAGE' }
-//   };
-
-//   const payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
-//   const string = payload + '/pg/v1/pay' + MERCHANT_KEY;
-//   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-//   const checksum = sha256 + '###1';
-
-//   const options = {
-//     method: 'POST',
-//     url: PROD_URL,
-//     headers: {
-//       accept: 'application/json',
-//       'Content-Type': 'application/json',
-//       'X-VERIFY': checksum,
-//     },
-//     data: { request: payload },
-//   };
-
-//   try {
-//     const response = await axios.request(options);
-//     const redirectUrl = response.data.data?.instrumentResponse?.redirectInfo?.url;
-
-//     if (redirectUrl) {
-//       res.status(200).json({ msg: "OK", url: redirectUrl });
-//     } else {
-//       res.status(500).json({ error: "Failed to initiate payment" });
-//     }
-//   } catch (error) {
-//     console.error("Payment initiation error:", error);
-//     res.status(500).json({ error: "Payment initiation failed" });
-//   }
-// });
-
-// // Payment Status Endpoint
-// app.post('/status', async (req, res) => {
-//   const merchantTransactionId = req.query.id;
-//   const { name, email, amount } = req.body;
-//   console.log( "incoming status code",req.body);
-
-//   const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
-//   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-//   const checksum = sha256 + '###1';
-
-//   const options = {
-//     method: 'GET',
-//     url: `${PROD_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
-//     headers: {
-//       accept: 'application/json',
-//       'Content-Type': 'application/json',
-//       'X-VERIFY': checksum,
-//       'X-MERCHANT-ID': MERCHANT_ID,
-//     },
-//   };
-
-//   try {
-//     const response = await axios.request(options);
-
-//     if (response.data.success) {
-//       const emailContent = `<p>Dear ${name},</p><p>Payment of ₹${amount} was successful.</p>`;
-//       await transporter.sendMail({
-//         from: EMAIL_USER,
-//         to: email,
-//         subject: 'Payment Successful',
-//         html: emailContent,
-//       });
-//       res.redirect(SUCCESS_URL);
-//     } else {
-//       res.redirect(FAILURE_URL);
-//     }
-//   } catch (error) {
-//     console.error("Status error:", error);
-//     res.redirect(FAILURE_URL);
-//   }
-// });
-
-// app.get('/', (req, res) => res.send('Welcome to the Payment API!'));
-
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
-
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
-const cors = require("cors");
+const cors = require('cors');
+const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(bodyParser.json());
 app.use(cors({
-  origin: "*",
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: ['http://localhost:5173'],
   credentials: true,
+  methods: ['GET', 'POST'],
 }));
 
-// Environment variables
+// Environment Variables
 const {
   MERCHANT_KEY,
   MERCHANT_ID,
@@ -168,7 +29,7 @@ const {
   EMAIL_USER,
   EMAIL_PASS,
   OWNER_EMAIL,
-  PORT
+  PORT,
 } = process.env;
 
 // Email transporter configuration
@@ -182,58 +43,82 @@ const transporter = nodemailer.createTransport({
 
 // Create Order Endpoint
 app.post('/create-order', async (req, res) => {
-  console.log("incoming data: " + req.body);
-  const { name, mobileNumber, email, amount } = req.body;
+  const {
+    name,
+    phone,
+    email,
+    amount,
+    dob,
+    placeOfBirth,
+    timeOfBirth,
+    gender,
+    language,
+    age,
+    whatsapp,
+    questions,
+  } = req.body;
+
+  console.log("Received Form Data: ", req.body);
+
+  // Check for mandatory fields
+  if (!name || !phone || !email || !amount) {
+    return res.status(400).json({ error: 'Invalid input data.' });
+  }
 
   const orderId = uuidv4();
+
+  // Payment payload including all fields from req.body
   const paymentPayload = {
     merchantId: MERCHANT_ID,
     merchantUserId: name,
-    mobileNumber,
+    mobileNumber: phone,
     amount: amount * 100,
     merchantTransactionId: orderId,
     redirectUrl: `${REDIRECT_URL}/?id=${orderId}`,
-    redirectMode: 'POST',
-    paymentInstrument: { type: 'PAY_PAGE' }
+    paymentInstrument: { type: 'PAY_PAGE' },
+    userDetails: {
+      dob,
+      placeOfBirth,
+      timeOfBirth,
+      gender,
+      language,
+      age,
+      whatsapp,
+      questions,
+    },
   };
 
   const payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
-  const string = payload + '/pg/v1/pay' + MERCHANT_KEY;
-  const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-  const checksum = sha256 + '###1';
-
-  const options = {
-    method: 'POST',
-    url: PROD_URL,
-    headers: {
-      accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-VERIFY': checksum,
-    },
-    data: { request: payload },
-  };
+  const hash = crypto.createHash('sha256').update(payload + '/pg/v1/pay' + MERCHANT_KEY).digest('hex');
+  const checksum = `${hash}###1`;
 
   try {
-    const response = await axios.request(options);
-    const redirectUrl = response.data.data?.instrumentResponse?.redirectInfo?.url;
+    const response = await axios.post(PROD_URL, { request: payload }, {
+      headers: {
+        'X-VERIFY': checksum,
+        'Content-Type': 'application/json',
+      },
+    });
 
+    const redirectUrl = response.data.data?.instrumentResponse?.redirectInfo?.url;
     if (redirectUrl) {
-      res.status(200).json({ msg: "OK", url: redirectUrl });
+      res.status(200).json({ url: redirectUrl });
     } else {
-      res.status(500).json({ error: "Failed to initiate payment" });
+      res.status(500).json({ error: 'Failed to generate payment link.' });
     }
   } catch (error) {
-    console.error("Payment initiation error:", error);
-    res.status(500).json({ error: "Payment initiation failed" });
+    console.error('Error:', error.message);
+    res.status(500).json({ error: 'Payment initiation failed.' });
   }
 });
+
 
 // Payment Status Endpoint
 app.post('/status', async (req, res) => {
   const merchantTransactionId = req.query.id;
   const {
     name,
-    mobileNumber,
+    phone,
     email,
     dob,
     placeOfBirth,
@@ -267,7 +152,7 @@ app.post('/status', async (req, res) => {
     if (response.data.success) {
       const userDetails = `
         <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Phone:</strong> ${mobileNumber}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Date of Birth:</strong> ${dob}</p>
         <p><strong>Place of Birth:</strong> ${placeOfBirth}</p>
@@ -283,7 +168,7 @@ app.post('/status', async (req, res) => {
       // Email to owner
       await transporter.sendMail({
         from: EMAIL_USER,
-        to: OWNER_EMAIL, // Now fetched from .env file
+        to: OWNER_EMAIL,
         subject: 'New Successful Payment Received',
         html: `<h3>New Payment Details</h3>${userDetails}`,
       });
@@ -293,7 +178,7 @@ app.post('/status', async (req, res) => {
         from: EMAIL_USER,
         to: email,
         subject: 'Payment Successful',
-        html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`
+        html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`,
       });
 
       res.redirect(SUCCESS_URL);
