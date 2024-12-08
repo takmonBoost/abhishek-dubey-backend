@@ -170,6 +170,10 @@ app.post('/status', async (req, res) => {
         to: OWNER_EMAIL,
         subject: 'New Successful Payment Received',
         html: `<h3>New Payment Details</h3>${userDetails}`,
+      }).then(() => {
+        console.log('Payment details email sent to owner successfully.');
+      }).catch((error) => {
+        console.error('Error sending email to owner:', error);
       });
 
       // Email to user
@@ -178,6 +182,10 @@ app.post('/status', async (req, res) => {
         to: email,
         subject: 'Payment Successful',
         html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`,
+      }).then(() => {
+        console.log('Payment success email sent to user successfully.');
+      }).catch((error) => {
+        console.error('Error sending email to user:', error);
       });
 
       res.redirect(SUCCESS_URL);  // Redirect to success page after successful payment
