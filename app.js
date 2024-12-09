@@ -1,4 +1,3 @@
-require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
@@ -6,16 +5,19 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
+require('dotenv').config();
 
 const app = express();
 
 // Middleware
 app.use(bodyParser.json());
-app.use(cors({
-  origin: "*",
-  credentials: true,
-  methods: ['GET', 'POST'],
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173/",
+    credentials: true,
+    methods: ['GET', 'POST'],
+  })
+);
 
 // Environment Variables
 const {
@@ -35,12 +37,27 @@ const {
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
-  host:MAIL_HOST,
+  service: 'gmail',
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
 });
+
+// Helper function to send emails
+async function sendEmail({ to, subject, html }) {
+  try {
+    await transporter.sendMail({
+      from: EMAIL_USER,
+      to,
+      subject,
+      html,
+    });
+    console.log(`Email sent to ${to}`);
+  } catch (error) {
+    console.error(`Error sending email to ${to}:`, error.message);
+  }
+}
 
 // Create Order Endpoint
 app.post('/create-order', async (req, res) => {
@@ -59,16 +76,14 @@ app.post('/create-order', async (req, res) => {
     questions,
   } = req.body;
 
-  console.log("Received Form Data: ", req.body);
+  console.log('Received Form Data:', req.body);
 
-  // Check for mandatory fields
   if (!name || !phone || !email || !amount) {
     return res.status(400).json({ error: 'Invalid input data.' });
   }
 
   const orderId = uuidv4();
 
-  // Payment payload including all fields from req.body
   const paymentPayload = {
     merchantId: MERCHANT_ID,
     merchantUserId: name,
@@ -90,7 +105,10 @@ app.post('/create-order', async (req, res) => {
   };
 
   const payload = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');
-  const hash = crypto.createHash('sha256').update(payload + '/pg/v1/pay' + MERCHANT_KEY).digest('hex');
+  const hash = crypto
+    .createHash('sha256')
+    .update(payload + '/pg/v1/pay' + MERCHANT_KEY)
+    .digest('hex');
   const checksum = `${hash}###1`;
 
   try {
@@ -114,7 +132,7 @@ app.post('/create-order', async (req, res) => {
 });
 
 // Payment Status Endpoint
- app.post('/status', async (req, res) => {
+app.post('/status', async (req, res) => {
   const merchantTransactionId = req.query.id;
   const {
     name,
@@ -128,9 +146,8 @@ app.post('/create-order', async (req, res) => {
     age,
     whatsapp,
     questions,
-    amount
+    amount,
   } = req.body;
-
 
   const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
@@ -149,10 +166,9 @@ app.post('/create-order', async (req, res) => {
 
   try {
     const response = await axios.request(options);
-    console.log("API Response:", response.data);
+    console.log('API Response:', response.data);
 
     if (response.data.success) {
-      console.log("Payment Successful:", response.data);
       const userDetails = `
         <p><strong>Name:</strong> ${name}</p>
         <p><strong>Phone:</strong> ${phone}</p>
@@ -168,42 +184,30 @@ app.post('/create-order', async (req, res) => {
         <p><strong>Amount Paid:</strong> ₹${amount}</p>
       `;
 
-      // Email to owner
-      await transporter.sendMail({
-        from: EMAIL_USER,
+      await sendEmail({
         to: OWNER_EMAIL,
         subject: 'New Successful Payment Received',
         html: `<h3>New Payment Details</h3>${userDetails}`,
-      }).then(() => {
-        console.log('Payment details email sent to owner successfully.');
-      }).catch((error) => {
-        console.error('Error sending email to owner:', error);
       });
 
-      // Email to user
-      await transporter.sendMail({
-        from: EMAIL_USER,
+      await sendEmail({
         to: email,
         subject: 'Payment Successful',
         html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`,
-      }).then(() => {
-        console.log('Payment success email sent to user successfully.');
-      }).catch((error) => {
-        console.error('Error sending email to user:', error);
       });
 
-      res.redirect(SUCCESS_URL);  // Redirect to success page after successful payment
+      res.redirect(SUCCESS_URL);
     } else {
-      res.redirect(FAILURE_URL);  // Redirect to failure page if payment not successful
+      res.redirect(FAILURE_URL);
     }
   } catch (error) {
-    console.error("Status error:", error);
-    res.redirect(FAILURE_URL);  // Redirect to failure page on error
+    console.error('Status error:', error.message);
+    res.redirect(FAILURE_URL);
   }
 });
 
 // Default Route
-app.get('/', (req, res) => res.send('Welcome to the Payment API! yes'));
+app.get('/', (req, res) => res.send('Welcome to the Payment API!'));
 
 // Start Server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
