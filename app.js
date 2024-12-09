@@ -35,7 +35,7 @@ const {
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
-  host: MAIL_HOST,
+  host:MAIL_HOST,
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
@@ -59,7 +59,6 @@ app.post('/create-order', async (req, res) => {
     questions,
   } = req.body;
 
-  // Log the received data for debugging
   console.log("Received Form Data: ", req.body);
 
   // Check for mandatory fields
@@ -69,11 +68,12 @@ app.post('/create-order', async (req, res) => {
 
   const orderId = uuidv4();
 
+  // Payment payload including all fields from req.body
   const paymentPayload = {
     merchantId: MERCHANT_ID,
     merchantUserId: name,
     mobileNumber: phone,
-    amount: amount * 100, // Convert amount to smallest unit
+    amount: amount * 100,
     merchantTransactionId: orderId,
     redirectUrl: `${REDIRECT_URL}?id=${orderId}`,
     paymentInstrument: { type: 'PAY_PAGE' },
@@ -102,21 +102,19 @@ app.post('/create-order', async (req, res) => {
     });
 
     const redirectUrl = response.data.data?.instrumentResponse?.redirectInfo?.url;
-
     if (redirectUrl) {
       res.status(200).json({ url: redirectUrl });
     } else {
-      console.error('Redirect URL missing in payment response:', response.data);
       res.status(500).json({ error: 'Failed to generate payment link.' });
     }
   } catch (error) {
-    console.error('Error initiating payment:', error.response?.data || error.message);
+    console.error('Error:', error.message);
     res.status(500).json({ error: 'Payment initiation failed.' });
   }
 });
 
 // Payment Status Endpoint
-app.post('/status', async (req, res) => {
+ app.post('/status', async (req, res) => {
   const merchantTransactionId = req.query.id;
   const {
     name,
@@ -130,28 +128,31 @@ app.post('/status', async (req, res) => {
     age,
     whatsapp,
     questions,
-    amount,
+    amount
   } = req.body;
 
-  console.log("Payment Status Callback Data:", { query: req.query, body: req.body });
 
   const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
   const sha256 = crypto.createHash('sha256').update(string).digest('hex');
   const checksum = sha256 + '###1';
 
-  try {
-    const response = await axios.get(`${PROD_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`, {
-      headers: {
-        accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-VERIFY': checksum,
-        'X-MERCHANT-ID': MERCHANT_ID,
-      },
-    });
+  const options = {
+    method: 'GET',
+    url: `${PROD_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
+    headers: {
+      accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-VERIFY': checksum,
+      'X-MERCHANT-ID': MERCHANT_ID,
+    },
+  };
 
-    console.log("Payment Status API Response:", response.data);
+  try {
+    const response = await axios.request(options);
+    console.log("API Response:", response.data);
 
     if (response.data.success) {
+      console.log("Payment Successful:", response.data);
       const userDetails = `
         <p><strong>Name:</strong> ${name}</p>
         <p><strong>Phone:</strong> ${phone}</p>
@@ -173,8 +174,11 @@ app.post('/status', async (req, res) => {
         to: OWNER_EMAIL,
         subject: 'New Successful Payment Received',
         html: `<h3>New Payment Details</h3>${userDetails}`,
+      }).then(() => {
+        console.log('Payment details email sent to owner successfully.');
+      }).catch((error) => {
+        console.error('Error sending email to owner:', error);
       });
-      console.log('Payment details email sent to owner successfully.');
 
       // Email to user
       await transporter.sendMail({
@@ -182,22 +186,24 @@ app.post('/status', async (req, res) => {
         to: email,
         subject: 'Payment Successful',
         html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`,
+      }).then(() => {
+        console.log('Payment success email sent to user successfully.');
+      }).catch((error) => {
+        console.error('Error sending email to user:', error);
       });
-      console.log('Payment success email sent to user successfully.');
 
-      res.redirect(SUCCESS_URL); // Redirect to success page
+      res.redirect(SUCCESS_URL);  // Redirect to success page after successful payment
     } else {
-      console.error("Payment failed:", response.data);
-      res.redirect(FAILURE_URL); // Redirect to failure page
+      res.redirect(FAILURE_URL);  // Redirect to failure page if payment not successful
     }
   } catch (error) {
-    console.error("Payment status error:", error.response?.data || error.message);
-    res.redirect(FAILURE_URL);
+    console.error("Status error:", error);
+    res.redirect(FAILURE_URL);  // Redirect to failure page on error
   }
 });
 
 // Default Route
-app.get('/', (req, res) => res.send('Welcome to the Payment API!'));
+app.get('/', (req, res) => res.send('Welcome to the Payment API! yes'));
 
 // Start Server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
