@@ -53,7 +53,7 @@ async function sendEmail({ to, subject, html }) {
       subject,
       html,
     });
-    console.log(`Email sent to ${to}`);
+    console.log(`Email sent to this  ${to}`);
   } catch (error) {
     console.error(`Error sending email to ${to}:`, error.message);
   }
@@ -63,7 +63,7 @@ async function sendEmail({ to, subject, html }) {
 app.post('/create-order', async (req, res) => {
   const {
     name,
-    phone,
+    phone, 
     email,
     amount,
     dob,
