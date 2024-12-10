@@ -28,7 +28,6 @@ const {
   FAILURE_URL,
   PROD_URL,
   PROD_STATUS_URL,
-  MAIL_HOST,
   EMAIL_USER,
   EMAIL_PASS,
   OWNER_EMAIL,
@@ -53,12 +52,11 @@ async function sendEmail({ to, subject, html }) {
       subject,
       html,
     });
-    console.log(`Email sent to this  ${to}`);
+    console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error(`Error sending email to ${to}:`, error.message);
   }
 }
-
 // Create Order Endpoint
 app.post('/create-order', async (req, res) => {
   const {
@@ -82,14 +80,15 @@ app.post('/create-order', async (req, res) => {
     return res.status(400).json({ error: 'Invalid input data.' });
   }
 
-  const orderId = uuidv4();
+  const orderId = uuidv4();  // Generate unique order ID
+  const merchantTransactionId = uuidv4(); // Generate merchant transaction ID
 
   const paymentPayload = {
     merchantId: MERCHANT_ID,
     merchantUserId: name,
     mobileNumber: phone,
     amount: amount * 100,
-    merchantTransactionId: orderId,
+    merchantTransactionId: merchantTransactionId, // Use merchantTransactionId here
     redirectUrl: `${REDIRECT_URL}?id=${orderId}`,
     paymentInstrument: { type: 'PAY_PAGE' },
     userDetails: {
@@ -120,8 +119,21 @@ app.post('/create-order', async (req, res) => {
     });
 
     const redirectUrl = response.data.data?.instrumentResponse?.redirectInfo?.url;
+    console.log("MERCHANT_ID:", MERCHANT_ID);
+console.log("MERCHANT_KEY:", MERCHANT_KEY);
+console.log("cheksum value:" , checksum);
+
+
     if (redirectUrl) {
-      res.status(200).json({ url: redirectUrl });
+      console.log(`Generated Transaction ID: ${orderId}`);
+      console.log(`Redirect URL: ${redirectUrl}`);
+
+      // Send back orderId and merchantTransactionId in response
+      res.status(200).json({
+        orderId: orderId,
+        merchantTransactionId: merchantTransactionId,  // Add merchantTransactionId here
+        url: redirectUrl,
+      });
     } else {
       res.status(500).json({ error: 'Failed to generate payment link.' });
     }
@@ -130,6 +142,7 @@ app.post('/create-order', async (req, res) => {
     res.status(500).json({ error: 'Payment initiation failed.' });
   }
 });
+
 
 // Payment Status Endpoint
 app.post('/status', async (req, res) => {
@@ -149,10 +162,19 @@ app.post('/status', async (req, res) => {
     amount,
   } = req.body;
 
-  const string = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}` + MERCHANT_KEY;
-  const sha256 = crypto.createHash('sha256').update(string).digest('hex');
-  const checksum = sha256 + '###1';
+  if (!merchantTransactionId) {
+    return res.status(400).json({ error: 'Transaction ID is required.' });
+  }
 
+  // Construct the checksum string and hash it
+  const checksumString = `/pg/v1/status/${MERCHANT_ID}/${merchantTransactionId}${MERCHANT_KEY}`;
+  console.log('Checksum String:', checksumString);
+
+  const sha256 = crypto.createHash('sha256').update(checksumString).digest('hex');
+  const checksum = sha256 + '###1';
+  console.log('Generated Checksum:', checksum);
+
+  // Construct the request options for the status API
   const options = {
     method: 'GET',
     url: `${PROD_STATUS_URL}/${MERCHANT_ID}/${merchantTransactionId}`,
@@ -163,6 +185,8 @@ app.post('/status', async (req, res) => {
       'X-MERCHANT-ID': MERCHANT_ID,
     },
   };
+
+  console.log('Request Options:', options);
 
   try {
     const response = await axios.request(options);
@@ -184,18 +208,21 @@ app.post('/status', async (req, res) => {
         <p><strong>Amount Paid:</strong> ₹${amount}</p>
       `;
 
+      // Send email to admin (owner)
       await sendEmail({
         to: OWNER_EMAIL,
         subject: 'New Successful Payment Received',
         html: `<h3>New Payment Details</h3>${userDetails}`,
       });
 
+      // Send email to the user (customer)
       await sendEmail({
         to: email,
         subject: 'Payment Successful',
         html: `<p>Dear ${name},</p><p>Your payment of ₹${amount} was successful. Thank you!</p>`,
       });
 
+      // Redirect user to the success page
       res.redirect(SUCCESS_URL);
     } else {
       res.redirect(FAILURE_URL);
@@ -206,8 +233,12 @@ app.post('/status', async (req, res) => {
   }
 });
 
+
 // Default Route
 app.get('/', (req, res) => res.send('Welcome to the Payment API!'));
 
 // Start Server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+
